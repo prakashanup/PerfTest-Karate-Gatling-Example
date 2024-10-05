@@ -1,0 +1,109 @@
+import java.time.LocalDate
+
+plugins {
+    id 'java'
+    id 'scala'
+    //id 'io.gatling.gradle' version '3.8.5'
+}
+
+group = 'com.intuit.karate'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    karateVersion = '1.1.0'
+    //scalaVersion = '3.1.3'
+    scalaVersion = '2.13.15'
+    gatlingVersion = '3.8.2'
+}
+
+apply plugin:'java'
+apply plugin: 'scala'
+
+configurations {
+    println 'Configurations'
+    gatling
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation ("com.intuit.karate:karate-gatling:${karateVersion}")
+    testImplementation ("com.intuit.karate:karate-junit4:${karateVersion}")
+    testImplementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.12.0'
+    testImplementation group: 'org.apache.commons', name: 'commons-collections4', version: '4.4'
+    testImplementation group: 'commons-io', name: 'commons-io', version: '2.11.0'
+    testImplementation "io.gatling.highcharts:gatling-charts-highcharts:${gatlingVersion}"
+    testImplementation "org.scala-lang:scala-library:${scalaVersion}"
+//    gatling("org.scala-lang:scala-library:${scalaVersion}")
+//    gatling("io.gatling:gatling-app:${gatlingVersion}")
+//    gatling("io.gatling.highchargs:gatling-charts-highcharts:${gatlingVersion}")
+//    gatling("com.intuit.karate:karate-gatling:1.1.0")
+}
+
+//gatling {
+//    simulations = { include("PerfTestSimulation") }  // Ensures the simulation is included
+//    srcDir = "src/test/scala"                        // Path to the simulation source
+//}
+
+//Below task is to avoid any duplicate resource getting generated in two location with the same name
+//e.g. feature files are getting duplicate in src/test/resources as well as in build/resources/test.
+tasks.withType(Copy).configureEach {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+sourceSets {
+    test {
+        resources {
+            srcDirs = ['src/test/resources', 'src/test/java', 'src/test/scala']
+        }
+    }
+}
+
+test {
+    //useJUnitPlatform()
+    systemProperty "karate.options", System.properties.getProperty("karate.options")
+    systemProperty "karate.env", System.properties.getProperty("karate.env")
+    outputs.upToDateWhen { false }
+}
+
+// to run, type: "gradle gatling"
+/*tasks.register('gatlingRun', JavaExec) {
+    group = 'Web Tests'
+    description = 'Run Gatling Tests'
+    new File("c:/Backup/reports/gatling").mkdirs()
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = "io.gatling.app.Gatling"
+    args = [
+            // change this to suit your simulation entry-point
+            '-s', 'simulations.KarateSimulation',
+            '-rf', "c:/Backup/reports/gatling"
+    ]
+    systemProperties System.properties
+}*/
+
+task gatlingRun(type: JavaExec) {
+    dependsOn testClasses
+    description = 'Growth API Tesst'
+    new File("${buildDir}/reports/gatling").mkdirs()
+    classpath = sourceSets.test.runtimeClasspath
+    main = "io.gatling.app.Gatling"
+    args = [
+            '-s', 'PerfTestSimulation',
+            '-rf', "${buildDir}/reports/gatling"
+    ]
+}
+
+task gatlingReport(type: JavaExec) {
+    dependsOn testClasses
+    description = 'API Performance test Report'
+    classpath = sourceSets.test.runtimeClasspath
+    main = "io.gatling.app.Gatling"
+    args = [
+            '-ro', "${buildDir}/agg-report"
+    ]
+    systemProperties System.properties
+}
